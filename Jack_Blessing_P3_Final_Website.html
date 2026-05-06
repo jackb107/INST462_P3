@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>80 Cereals: An Interactive Story</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #F5F5DC; /* Beige */
+            --shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            font-family: 'Sora', sans-serif;
+            color: #333;
+            height: 100%;
+            overflow: hidden; /* Hide default scroll to enforce scroll-snapping container */
+        }
+
+        .scroll-container {
+            height: 100vh;
+            overflow-y: hidden; /* Locked until button click */
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        section {
+            scroll-snap-align: start; /* Changed to start to support slightly taller content */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        /* --- Fade Animation Styles --- */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+            will-change: opacity, transform;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .box {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            max-width: 800px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* Enlarge Text Box Class */
+        .large-box {
+            max-width: 1000px;
+            padding: 50px;
+            font-size: 1.5rem;
+            line-height: 1.8;
+        }
+
+        /* Page 1 Styles */
+        .header-layout {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+        .header-text-content {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        h1 { margin: 0 0 10px 0; font-size: 2.5rem; text-shadow: 1px 1px 3px rgba(0,0,0,0.1); }
+        .sub-text { color: gray; font-size: 0.9rem; margin-bottom: 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.05); }
+        .btn {
+            background: linear-gradient(145deg, #ff4d4d, #cc0000);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-family: 'Sora', sans-serif;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(204, 0, 0, 0.4);
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: scale(1.05); }
+        .hero-img {
+            max-width: 300px;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+        }
+        
+        .scroll-hint { position: absolute; bottom: 20px; font-style: italic; font-size: 0.8rem; }
+
+        /* Page 2 Styles */
+        .marquee-container {
+            width: 100%;
+            overflow: hidden;
+            background: white;
+            padding: 20px 0;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .marquee-content {
+            display: flex;
+            gap: 20px;
+            width: max-content; 
+            animation: scroll 15s linear infinite;
+        }
+        .cereal-mock {
+            min-width: 150px; height: 200px;
+            display: flex; justify-content: center; align-items: center;
+            border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+            font-weight: bold;
+            color: transparent; 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        /* Unique Images for Cereal Mocks */
+        .mock-cheerios { background-image: url('https://m.media-amazon.com/images/I/914qUV8LChL.jpg'); }
+        .mock-frootloops { background-image: url('https://m.media-amazon.com/images/I/81R7R8JPhYL._AC_UF894,1000_QL80_.jpg'); }
+        .mock-frostedflakes { background-image: url('https://m.media-amazon.com/images/I/91aMKqcr3uL._AC_UF894,1000_QL80_.jpg'); }
+        .mock-luckycharms { background-image: url('https://m.media-amazon.com/images/I/51w0AHxKV7L._AC_UF894,1000_QL80_.jpg'); }
+        .mock-cinnamontoast { background-image: url('https://m.media-amazon.com/images/I/91j6fXMblPL._AC_UF894,1000_QL80_.jpg'); }
+        .mock-raisinbran { background-image: url('https://m.media-amazon.com/images/I/81Mbb9FQ2RL._AC_UF350,350_QL80_.jpg'); }
+
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(calc(-50% - 10px)); }
+        }
+
+        /* Page 3 Emoji Pointer */
+        .emoji-pointer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .shocked-msg {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-size: 2.5rem;
+            box-shadow: var(--shadow);
+            border: 2px solid #ccc;
+        }
+        .dash-line {
+            height: 40px;
+            border-left: 3px dashed #666;
+            position: relative;
+            margin-top: 5px;
+        }
+        .dash-line::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: -6px;
+            border-width: 6px 5px 0 5px;
+            border-style: solid;
+            border-color: #666 transparent transparent transparent;
+        }
+
+        /* Page 4 Styles */
+        .chart-box { flex: 1; background: white; padding: 15px; border-radius: 12px; box-shadow: var(--shadow); width: 90%; max-width: 1000px;}
+        .chart-box h3 { margin-top: 0; font-size: 1.1rem; }
+        
+        #popup-modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 1000; text-align: center; min-width: 250px;
+        }
+        #popup-names-list {
+            max-height: 120px; overflow-y: auto; text-align: left;
+            margin: 10px 0; font-size: 0.95rem; font-style: italic; color: #555;
+        }
+        #popup-names-list ul { margin: 0; padding-left: 20px; }
+        #popup-modal button { 
+            background: #e74c3c; color: white; border: none; padding: 8px 20px; 
+            border-radius: 6px; cursor: pointer; font-family: 'Sora'; font-weight: bold; 
+        }
+        #popup-modal button:hover { background: #c0392b; }
+
+        /* Page 6 Styles */
+        .compare-wrapper { display: flex; gap: 20px; align-items: center; }
+        .nutrition-label {
+            background: white; border: 2px solid black; padding: 20px; width: 250px;
+            box-shadow: var(--shadow); font-family: 'Helvetica', Arial, sans-serif; text-align: left;
+        }
+        .nutrition-label h2 { margin: 0; font-size: 2rem; border-bottom: 10px solid black; }
+        .nutrition-label p { margin: 5px 0; display: flex; justify-content: space-between; border-bottom: 1px solid #ccc; padding-bottom: 5px;}
+        .cereal-image {
+            width: 200px;
+            height: 250px;
+            object-fit: contain;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 10px;
+        }
+        .arrow { font-size: 3rem; font-weight: bold; color: #333; }
+        
+        /* Page 7 Styles */
+        .highlight { background-color: #ffcccc; padding: 2px 5px; border-radius: 3px; }
+
+        /* Page 8 Styles */
+        .page8-layout { display: flex; gap: 30px; align-items: center; flex-direction: row; }
+        .page8-wrapper { display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        .list-box { background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow); width: 400px; }
+        .list-row { display: flex; align-items: center; margin-bottom: 15px; }
+        .list-name { width: 120px; font-weight: 600; }
+        .progress-bar-bg { flex: 1; height: 20px; background: #eee; border-radius: 10px; margin: 0 10px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: red; border-radius: 10px; }
+        .list-val { width: 40px; text-align: right; font-weight: bold; }
+        .emoji-callout {
+            background: white; padding: 30px; border-radius: 50%; box-shadow: var(--shadow);
+            font-size: 4rem; position: relative;
+        }
+        .emoji-callout::before {
+            content: ''; position: absolute; top: 50%; left: -20px; border: 10px solid transparent;
+            border-right-color: white; transform: translateY(-50%);
+        }
+
+        /* Page 10 Styles */
+        .calc-box { display: flex; gap: 15px; align-items: center; background: white; padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin: 20px 0; }
+        select { padding: 10px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Sora'; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .submit-btn { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-family: 'Sora'; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .submit-btn:hover { background: #45a049; }
+        #calc-result { margin-top: 20px; font-weight: bold; font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.05); }
+
+        /* Page 11 */
+        .finale { font-size: 2.5rem; font-weight: bold; text-align: center; text-shadow: 1px 1px 4px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+<div class="scroll-container" id="scrollContainer">
+
+    <section id="page1">
+        <div class="header-layout fade-in">
+            <div class="header-text-content">
+                <h1>80 Cereals: An Interactive Story</h1>
+                <p class="sub-text">Designed by Jack Blessing</p>
+                <button class="btn" onclick="startStory()">Let's Begin</button>
+            </div>
+            <img src="https://www.montmarte.com/cdn/shop/articles/6._A_drawing_of_coloured_cereal_in_a_green_bowl.jpg?v=1676421889" alt="Cereal Bowl" class="hero-img">
+        </div>
+    </section>
+
+    <section id="page2">
+        <div class="marquee-container fade-in" style="transition-delay: 0.1s;">
+            <div class="marquee-content">
+                <div class="cereal-mock mock-cheerios">Cheerios</div>
+                <div class="cereal-mock mock-frootloops">Froot Loops</div>
+                <div class="cereal-mock mock-frostedflakes">Frosted Flakes</div>
+                <div class="cereal-mock mock-luckycharms">Lucky Charms</div>
+                <div class="cereal-mock mock-cinnamontoast">Cinnamon Toast</div>
+                <div class="cereal-mock mock-raisinbran">Raisin Bran</div>
+                
+                <div class="cereal-mock mock-cheerios">Cheerios</div>
+                <div class="cereal-mock mock-frootloops">Froot Loops</div>
+                <div class="cereal-mock mock-frostedflakes">Frosted Flakes</div>
+                <div class="cereal-mock mock-luckycharms">Lucky Charms</div>
+                <div class="cereal-mock mock-cinnamontoast">Cinnamon Toast</div>
+                <div class="cereal-mock mock-raisinbran">Raisin Bran</div>
+
+                <div class="cereal-mock mock-cheerios">Cheerios</div>
+                <div class="cereal-mock mock-frootloops">Froot Loops</div>
+                <div class="cereal-mock mock-frostedflakes">Frosted Flakes</div>
+                <div class="cereal-mock mock-luckycharms">Lucky Charms</div>
+                <div class="cereal-mock mock-cinnamontoast">Cinnamon Toast</div>
+                <div class="cereal-mock mock-raisinbran">Raisin Bran</div>
+
+                <div class="cereal-mock mock-cheerios">Cheerios</div>
+                <div class="cereal-mock mock-frootloops">Froot Loops</div>
+                <div class="cereal-mock mock-frostedflakes">Frosted Flakes</div>
+                <div class="cereal-mock mock-luckycharms">Lucky Charms</div>
+                <div class="cereal-mock mock-cinnamontoast">Cinnamon Toast</div>
+                <div class="cereal-mock mock-raisinbran">Raisin Bran</div>
+            </div>
+        </div>
+        <div class="box fade-in" style="transition-delay: 0.3s;">
+            People tend to choose cereals based on taste, but are often unaware of what they're really consuming... 🤔
+        </div>
+        <p class="scroll-hint">scroll down</p>
+    </section>
+
+    <section id="page3">
+        <div class="emoji-pointer fade-in">
+            <div class="shocked-msg">😱</div>
+            <div class="dash-line"></div>
+        </div>
+        <div class="box large-box fade-in" style="transition-delay: 0.2s;">
+            Many cereals market themselves as a healthy breakfast option, <i>but this isn’t always the case</i>. Cereals are often high in <span style="color: red;">calories and sugar</span>. This interactive story uses data for 80 cereals to reveal the true nutritional value of these cereals.
+        </div>
+    </section>
+
+    <section id="page4">
+        <div class="chart-box fade-in" style="transition-delay: 0.1s;">
+            <h3 style="text-align: center;">All 80 Cereals: Sugar vs. Calories Heat Map</h3>
+            <canvas id="heatmapChart" style="min-height: 500px; max-height: 500px;"></canvas>
+        </div>
+        <p style="margin-top: 15px; font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.05);">Here's a heat map with the calories and sugar of all cereals. 📊</p>
+        
+        <div id="popup-modal">
+            <h3 id="popup-title">Cereal Name</h3>
+            <div id="popup-names-list"></div>
+            <p style="margin-bottom: 5px;"><strong>Calories:</strong> <span id="popup-cals"></span></p>
+            <p style="margin-top: 0;"><strong>Sugar:</strong> <span id="popup-sugar"></span>g</p>
+            <button onclick="document.getElementById('popup-modal').style.display='none'" style="margin-top:10px;">Close</button>
+        </div>
+    </section>
+
+    <section id="page5">
+        <div class="box large-box fade-in">
+            Does the distribution of calories and sugar seem vast? Let's zero in and focus on the highest calorie/sugar cereal and the lowest.
+        </div>
+    </section>
+
+    <section id="page6">
+        <h2 class="fade-in" style="margin-bottom: 30px; text-shadow: 1px 1px 3px rgba(0,0,0,0.1);">Highest Calorie/Sugar Cereal vs. Lowest</h2>
+        <div class="compare-wrapper">
+            <img src="https://m.media-amazon.com/images/I/81qxRLzFruL._AC_UF350,350_QL80_.jpg" alt="Smacks Cereal" class="cereal-image fade-in" style="transition-delay: 0.1s;">
+            <div class="arrow fade-in" style="transition-delay: 0.2s;">&rarr;</div>
+            
+            <div class="nutrition-label fade-in" style="transition-delay: 0.3s;">
+                <h2>Nutrition Facts</h2>
+                <p style="font-weight: bold; border-bottom: 5px solid black;">Smacks (Highest)</p>
+                <p><b>Calories</b> <b>110</b></p>
+                <p><b>Sugars</b> <b>15g</b></p>
+            </div>
+            
+            <div class="nutrition-label fade-in" style="transition-delay: 0.4s;">
+                <h2>Nutrition Facts</h2>
+                <p style="font-weight: bold; border-bottom: 5px solid black;">Puffed Rice (Lowest)</p>
+                <p><b>Calories</b> <b>50</b></p>
+                <p><b>Sugars</b> <b>0g</b></p>
+            </div>
+            
+            <div class="arrow fade-in" style="transition-delay: 0.5s;">&larr;</div>
+            <img src="https://i.pinimg.com/474x/78/dc/8c/78dc8c40389fd9c391691c5c875c4e7a.jpg" alt="Puffed Rice Cereal" class="cereal-image fade-in" style="transition-delay: 0.6s;">
+        </div>
+    </section>
+
+    <section id="page7">
+        <p class="fade-in" style="font-size: 1.2rem; margin-bottom: 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.05);">The difference between the highest and lowest calorie/sugar cereals is vast.</p>
+        <div class="box fade-in" style="transition-delay: 0.2s;">
+            Let’s say you wanted to cut down on your sugar intake. Naturally, you pick a cereal that’s low in sugar. <span class="highlight">But what about the calorie content?</span>
+        </div>
+    </section>
+
+    <section id="page8">
+        <div class="page8-wrapper">
+            <div class="page8-layout">
+                <div class="list-box fade-in">
+                    <h3 style="text-align: center; margin-top: 0;">Calorie Count for Five Lowest Sugar Cereals</h3>
+                    <div id="low-sugar-list"></div>
+                </div>
+                <div class="emoji-callout fade-in" style="transition-delay: 0.3s;">😫</div>
+            </div>
+            <p class="fade-in" style="font-style: italic; margin-top: 15px; transition-delay: 0.5s;">The calorie count isn't the same!</p>
+        </div>
+    </section>
+
+    <section id="page9">
+        <div class="box large-box fade-in">
+            As demonstrated, low sugar doesn’t necessarily mean low calorie as well. What if we focused on one specific brand of cereal - is there one brand that has objectively “healthier” cereal to choose from?
+        </div>
+    </section>
+
+    <section id="page10">
+        <p class="fade-in" style="font-weight: 600; text-shadow: 1px 1px 2px rgba(0,0,0,0.05);">Choose a brand and a nutritional element to calculate the average for said brand.</p>
+        <div class="calc-box fade-in" style="transition-delay: 0.2s;">
+            <select id="brandSelect">
+                <option value="Kelloggs">Kellogg's</option>
+                <option value="GeneralMills">General Mills</option>
+                <option value="Post">Post</option>
+                <option value="Quaker">Quaker Oats</option>
+                <option value="Nabisco">Nabisco</option>
+            </select>
+            <select id="metricSelect">
+                <option value="Calories">Calories</option>
+                <option value="Sugar">Sugar</option>
+            </select>
+            <button class="submit-btn" onclick="calculateAverage()">Submit</button>
+        </div>
+        <p class="fade-in" style="font-style: italic; transition-delay: 0.4s;">What would you choose?</p>
+        <div id="calc-result" class="fade-in"></div>
+    </section>
+
+    <section id="page11">
+        <div class="finale fade-in">
+            Next time you decide to eat cereal, you may consider the true nutritional value before you buy.
+        </div>
+    </section>
+
+</div>
+
+<script>
+    // --- Scroll Lock & Fade Implementation ---
+    document.addEventListener("DOMContentLoaded", function() {
+        const faders = document.querySelectorAll('.fade-in');
+        
+        const appearOptions = {
+            threshold: 0.2, 
+            rootMargin: "0px 0px -50px 0px"
+        };
+        
+        const appearOnScroll = new IntersectionObserver(function(entries, observer) {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) {
+                    return;
+                } else {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target); 
+                }
+            });
+        }, appearOptions);
+
+        faders.forEach(fader => {
+            appearOnScroll.observe(fader);
+        });
+    });
+
+    function startStory() {
+        const container = document.getElementById('scrollContainer');
+        container.style.overflowY = 'auto'; // Unlock scrolling
+        
+        // Scroll to the second page smoothly
+        document.getElementById('page2').scrollIntoView({ behavior: 'smooth' });
+
+        // Safely remove page 1 after scroll animation finishes
+        setTimeout(() => {
+            const page1 = document.getElementById('page1');
+            if (page1) {
+                container.style.scrollSnapType = 'none';
+                container.style.scrollBehavior = 'auto'; 
+                page1.style.display = 'none';
+                container.scrollTop = 0;
+                requestAnimationFrame(() => {
+                    container.style.scrollBehavior = 'smooth';
+                    container.style.scrollSnapType = 'y mandatory';
+                });
+            }
+        }, 800);
+    }
+
+    // --- Embedded Data based on kaggle 80 Cereals Dataset ---
+    const all80Cereals = [
+        {name: "100% Bran", cal: 70, sugar: 6},
+        {name: "100% Natural Bran", cal: 120, sugar: 8},
+        {name: "All-Bran", cal: 70, sugar: 5},
+        {name: "All-Bran with Extra Fiber", cal: 50, sugar: 0},
+        {name: "Almond Delight", cal: 110, sugar: 8},
+        {name: "Apple Cinnamon Cheerios", cal: 110, sugar: 10},
+        {name: "Apple Jacks", cal: 110, sugar: 14},
+        {name: "Basic 4", cal: 130, sugar: 8},
+        {name: "Bran Chex", cal: 90, sugar: 6},
+        {name: "Bran Flakes", cal: 90, sugar: 5},
+        {name: "Cap'n'Crunch", cal: 120, sugar: 12},
+        {name: "Cheerios", cal: 110, sugar: 1},
+        {name: "Cinnamon Toast Crunch", cal: 120, sugar: 9},
+        {name: "Clusters", cal: 110, sugar: 7},
+        {name: "Cocoa Puffs", cal: 110, sugar: 13},
+        {name: "Corn Chex", cal: 110, sugar: 3},
+        {name: "Corn Flakes", cal: 100, sugar: 2},
+        {name: "Corn Pops", cal: 110, sugar: 12},
+        {name: "Count Chocula", cal: 110, sugar: 13},
+        {name: "Cracklin' Oat Bran", cal: 110, sugar: 7},
+        {name: "Cream of Wheat (Quick)", cal: 100, sugar: 0},
+        {name: "Crispix", cal: 110, sugar: 3},
+        {name: "Crispy Wheat & Raisins", cal: 100, sugar: 10},
+        {name: "Double Dip Crunch", cal: 160, sugar: 14},
+        {name: "Froot Loops", cal: 110, sugar: 13},
+        {name: "Frosted Flakes", cal: 110, sugar: 11},
+        {name: "Frosted Mini-Wheats", cal: 100, sugar: 7},
+        {name: "Fruit & Fibre Dates; Walnuts; and Oats", cal: 120, sugar: 10},
+        {name: "Fruitful Bran", cal: 120, sugar: 12},
+        {name: "Fruity Pebbles", cal: 110, sugar: 12},
+        {name: "Golden Crisp", cal: 100, sugar: 15},
+        {name: "Golden Grahams", cal: 110, sugar: 9},
+        {name: "Grape Nuts Flakes", cal: 100, sugar: 5},
+        {name: "Grape-Nuts", cal: 110, sugar: 3},
+        {name: "Great Grains Pecan", cal: 120, sugar: 4},
+        {name: "Honey Graham Ohs", cal: 120, sugar: 11},
+        {name: "Honey Nut Cheerios", cal: 110, sugar: 10},
+        {name: "Honey-comb", cal: 110, sugar: 11},
+        {name: "Just Right Crunchy Nuggets", cal: 110, sugar: 6},
+        {name: "Just Right Fruit & Nut", cal: 140, sugar: 9},
+        {name: "Kix", cal: 110, sugar: 3},
+        {name: "Life", cal: 100, sugar: 6},
+        {name: "Lucky Charms", cal: 110, sugar: 12},
+        {name: "Maypo", cal: 100, sugar: 0},
+        {name: "Muesli Raisins; Dates; & Almonds", cal: 150, sugar: 11},
+        {name: "Muesli Raisins; Peaches; & Pecans", cal: 150, sugar: 11},
+        {name: "Mueslix Crispy Blend", cal: 160, sugar: 13},
+        {name: "Multi-Grain Cheerios", cal: 100, sugar: 6},
+        {name: "Nut&Honey Crunch", cal: 120, sugar: 9},
+        {name: "Nutri-Grain Almond-Raisin", cal: 140, sugar: 7},
+        {name: "Nutri-grain Wheat", cal: 90, sugar: 2},
+        {name: "Oatmeal Raisin Crisp", cal: 130, sugar: 10},
+        {name: "Post Nat. Raisin Bran", cal: 120, sugar: 14},
+        {name: "Product 19", cal: 100, sugar: 3},
+        {name: "Puffed Rice", cal: 50, sugar: 0},
+        {name: "Puffed Wheat", cal: 50, sugar: 0},
+        {name: "Quaker Oat Squares", cal: 100, sugar: 6},
+        {name: "Quaker Oatmeal", cal: 100, sugar: -1},
+        {name: "Raisin Bran", cal: 120, sugar: 12},
+        {name: "Raisin Nut Bran", cal: 100, sugar: 8},
+        {name: "Raisin Squares", cal: 90, sugar: 6},
+        {name: "Rice Chex", cal: 110, sugar: 2},
+        {name: "Rice Krispies", cal: 110, sugar: 3},
+        {name: "Shredded Wheat", cal: 80, sugar: 0},
+        {name: "Shredded Wheat 'n'Bran", cal: 90, sugar: 0},
+        {name: "Shredded Wheat spoon size", cal: 90, sugar: 0},
+        {name: "Smacks", cal: 110, sugar: 15},
+        {name: "Special K", cal: 110, sugar: 3},
+        {name: "Strawberry Fruit Wheats", cal: 90, sugar: 5},
+        {name: "Total Corn Flakes", cal: 110, sugar: 3},
+        {name: "Total Raisin Bran", cal: 140, sugar: 14},
+        {name: "Total Whole Grain", cal: 100, sugar: 3},
+        {name: "Triples", cal: 110, sugar: 3},
+        {name: "Trix", cal: 110, sugar: 12},
+        {name: "Wheat Chex", cal: 100, sugar: 3},
+        {name: "Wheaties", cal: 100, sugar: 3},
+        {name: "Wheaties Honey Gold", cal: 110, sugar: 8}
+    ];
+
+    const lowestSugarCereals = [
+        {name: "Cheerios", cal: 110, sugar: 1},
+        {name: "Shredded Wheat", cal: 80, sugar: 0},
+        {name: "All-Bran", cal: 70, sugar: 5},
+        {name: "Puffed Rice", cal: 50, sugar: 0},
+        {name: "Puffed Wheat", cal: 50, sugar: 0}
+    ];
+
+    const brandData = {
+        "Kelloggs": { cal: 108.7, sugar: 7.5 },
+        "GeneralMills": { cal: 111.3, sugar: 7.9 },
+        "Post": { cal: 108.8, sugar: 8.7 },
+        "Quaker": { cal: 95.0, sugar: 5.2 },
+        "Nabisco": { cal: 86.6, sugar: 1.8 }
+    };
+
+    // --- Page 4: Heatmap Setup ---
+    function showPopups(cerealsArray) {
+        const titleEl = document.getElementById('popup-title');
+        const listEl = document.getElementById('popup-names-list');
+        const calsEl = document.getElementById('popup-cals');
+        const sugarEl = document.getElementById('popup-sugar');
+
+        if(cerealsArray.length === 1) {
+            titleEl.innerText = cerealsArray[0].name;
+            listEl.innerHTML = '';
+        } else {
+            titleEl.innerText = `${cerealsArray.length} Cereals Found Here`;
+            listEl.innerHTML = `<ul>${cerealsArray.map(c => `<li>${c.name}</li>`).join('')}</ul>`;
+        }
+
+        calsEl.innerText = cerealsArray[0].cal;
+        sugarEl.innerText = cerealsArray[0].sugar;
+        
+        document.getElementById('popup-modal').style.display = 'block';
+    }
+
+    const ctxHeatmap = document.getElementById('heatmapChart').getContext('2d');
+    new Chart(ctxHeatmap, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: '80 Cereals Dataset',
+                data: all80Cereals.map(c => ({ x: c.sugar, y: c.cal, cerealObj: c })),
+                backgroundColor: 'rgba(231, 76, 60, 0.4)', // 40% Opacity stacks on overlap to create a heatmap effect
+                borderColor: 'rgba(231, 76, 60, 0.8)',
+                pointRadius: 8,
+                pointHoverRadius: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { title: { display: true, text: 'Sugar Content (g)' }, beginAtZero: true },
+                y: { title: { display: true, text: 'Calorie Content' }, beginAtZero: true }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    // Filter forces the chart to only process one dot per coordinate stack, stopping tooltips from multiplying
+                    filter: function(tooltipItem, index, tooltipItems) {
+                        const firstIndex = tooltipItems.findIndex(
+                            item => item.raw.x === tooltipItem.raw.x && item.raw.y === tooltipItem.raw.y
+                        );
+                        return index === firstIndex;
+                    },
+                    callbacks: {
+                        label: function(context) {
+                            const c = context.raw.cerealObj;
+                            const overlapping = all80Cereals.filter(item => item.cal === c.cal && item.sugar === c.sugar);
+                            
+                            // Strip any identical duplicate names just in case they exist in the array
+                            let uniqueNames = Array.from(new Set(overlapping.map(item => item.name)));
+                            
+                            if (uniqueNames.length > 1) {
+                                let lines = [...uniqueNames];
+                                lines.push(`Total: ${c.cal} Cal, ${c.sugar}g Sugar`);
+                                return lines;
+                            }
+                            return `${uniqueNames[0]}: ${c.cal} Cal, ${c.sugar}g Sugar`;
+                        }
+                    }
+                }
+            },
+            onClick: (e, elements) => {
+                if(elements.length > 0) {
+                    const clickedIndex = elements[0].index;
+                    const clickedCereal = all80Cereals[clickedIndex];
+                    
+                    const overlappingCereals = all80Cereals.filter(c => 
+                        c.cal === clickedCereal.cal && c.sugar === clickedCereal.sugar
+                    );
+                    
+                    // Deduplicate click names
+                    const uniqueOverlapping = [];
+                    const seen = new Set();
+                    for (const cereal of overlappingCereals) {
+                        if (!seen.has(cereal.name)) {
+                            seen.add(cereal.name);
+                            uniqueOverlapping.push(cereal);
+                        }
+                    }
+                    
+                    showPopups(uniqueOverlapping);
+                }
+            }
+        }
+    });
+
+    // --- Page 8: Progress Bars ---
+    const maxCalForProgress = 110; 
+    const listContainer = document.getElementById('low-sugar-list');
+    
+    // Sort descending for the visual impact requested
+    lowestSugarCereals.sort((a,b) => b.cal - a.cal).forEach(cereal => {
+        const pct = (cereal.cal / maxCalForProgress) * 100;
+        const row = document.createElement('div');
+        row.className = 'list-row';
+        row.innerHTML = `
+            <div class="list-name">${cereal.name}</div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: ${pct}%"></div>
+            </div>
+            <div class="list-val">${cereal.cal}</div>
+        `;
+        listContainer.appendChild(row);
+    });
+
+    // --- Page 10: Brand Calculator ---
+    function calculateAverage() {
+        const brandObj = document.getElementById('brandSelect');
+        const metric = document.getElementById('metricSelect').value;
+        const brandKey = brandObj.value;
+        const brandText = brandObj.options[brandObj.selectedIndex].text;
+        
+        let value = 0;
+        if(metric === 'Calories') value = brandData[brandKey].cal;
+        if(metric === 'Sugar') value = brandData[brandKey].sugar + 'g';
+
+        const resultDiv = document.getElementById('calc-result');
+        resultDiv.innerHTML = `The average ${metric.toLowerCase()} for ${brandText} is ${value}.`;
+        
+        // Re-trigger animation if needed
+        resultDiv.classList.remove('visible');
+        setTimeout(() => resultDiv.classList.add('visible'), 50);
+    }
+</script>
+</body>
+</html>
